@@ -1,0 +1,343 @@
+﻿<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>T.K.K - Türkçe Konuşma Kulübü</title>
+  <style>
+    :root{ --red:#d32f2f; --red-dark:#b71c1c; --white:#fff; --muted:#f5f5f5; --card-shadow: 0 6px 18px rgba(0,0,0,0.08); }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;font-family: "Vazirmatn", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; background:var(--muted); color:#222}
+    header.app-header{background:linear-gradient(90deg,var(--red),var(--red-dark));color:var(--white);padding:12px 18px;display:flex;align-items:center;justify-content:space-between}
+    .container{max-width:1100px;margin:18px auto;padding:12px}
+    .card{background:var(--white);border-radius:12px;padding:14px;box-shadow:var(--card-shadow);}    
+    .split{display:flex;gap:16px}.sidebar{width:260px;min-width:200px}.main{flex:1}
+    .menu{display:flex;flex-direction:column;gap:6px}.menu button{background:transparent;border:none;text-align:right;padding:10px;border-radius:8px;cursor:pointer}
+    .menu button:hover{background:#fff3f3}.menu button.active{background:var(--red);color:var(--white)}
+    label{display:block;margin-bottom:6px;font-size:13px} input[type=text], input[type=password], textarea, select{width:100%;padding:10px;border-radius:8px;border:1px solid #e6e6e6}
+    .row{display:flex;gap:12px}.row .col{flex:1}.muted{color:#666;font-size:13px}
+    .list{display:flex;flex-direction:column;gap:8px}.list-item{display:flex;justify-content:space-between;align-items:center;padding:10px;border-radius:8px;border:1px solid #f0f0f0}
+    .card-viewer{display:flex;flex-direction:column;align-items:center;gap:12px}.flashcard{width:100%;max-width:600px;height:320px;perspective:1200px}.card-inner{width:100%;height:100%;border-radius:12px;background:var(--white);box-shadow:var(--card-shadow);transform-style:preserve-3d;transition:transform .6s}.card-face{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:18px;font-size:22px;backface-visibility:hidden}.card-front{background:linear-gradient(180deg, #fff, #fff)}.card-back{transform:rotateY(180deg);background:#fafafa}
+    .controls{display:flex;gap:8px;align-items:center}.btn{background:var(--red);border:none;color:var(--white);padding:8px 12px;border-radius:8px;cursor:pointer}.btn.ghost{background:transparent;color:var(--red);border:1px solid var(--red)}
+    @media(max-width:900px){.split{flex-direction:column}.sidebar{width:100%}}
+  </style>
+</head>
+<body>
+  <header class="app-header">
+    <h1>باشگاه گفت‌وگوی ترکی — T.K.K</h1>
+    <div class="muted">یک اپلیکیشن آموزشی پیشرفته برای زبان‌آموزان ایرانی</div>
+  </header>
+  <div class="container"><div id="app"></div></div>
+
+  <script>
+  /*****************************************************************
+   Improved storage: IndexedDB backend + optional remote API sync
+   - Stores users, vocabGroups, quizzes, homework, results, and assets (Blobs)
+   - Passwords hashed with SHA-256 (Web Crypto)
+   - All previous UI preserved; data layer replaced with DB.js wrapper
+   - If you later add a server, set API_BASE_URL to sync endpoints (optional)
+  *****************************************************************/
+
+  const API_BASE_URL = null; // e.g. 'https://your-server.example.com/api' (optional)
+
+  // ------------------ IndexedDB wrapper ------------------
+  const DB_NAME = 'tkk_app_db_v2';
+  const DB_VERSION = 1;
+  let idb = null;
+
+  async function openDB(){
+    return new Promise((res, rej)=>{
+      const req = indexedDB.open(DB_NAME, DB_VERSION);
+      req.onupgradeneeded = (ev)=>{
+        const db = ev.target.result;
+        if(!db.objectStoreNames.contains('meta')) db.createObjectStore('meta',{keyPath:'k'});
+        if(!db.objectStoreNames.contains('users')) db.createObjectStore('users',{keyPath:'id'});
+        if(!db.objectStoreNames.contains('vocabGroups')) db.createObjectStore('vocabGroups',{keyPath:'id'});
+        if(!db.objectStoreNames.contains('quizzes')) db.createObjectStore('quizzes',{keyPath:'id'});
+        if(!db.objectStoreNames.contains('homework')) db.createObjectStore('homework',{keyPath:'id'});
+        if(!db.objectStoreNames.contains('results')) db.createObjectStore('results',{keyPath:'id'});
+        if(!db.objectStoreNames.contains('assets')) db.createObjectStore('assets',{keyPath:'id'});
+      };
+      req.onsuccess = ()=>{ idb = req.result; res(idb); };
+      req.onerror = ()=> rej(req.error);
+    });
+  }
+
+  function tx(storeNames, mode='readonly'){
+    const trx = idb.transaction(storeNames, mode);
+    const stores = {};
+    storeNames.forEach(s=> stores[s] = trx.objectStore(s));
+    return {trx, stores};
+  }
+
+  async function getAll(store){ return new Promise((res,rej)=>{ const {stores, trx} = tx([store]); const req = stores[store].getAll(); req.onsuccess=()=>res(req.result); req.onerror=()=>rej(req.error); }); }
+  async function get(store, key){ return new Promise((res,rej)=>{ const {stores} = tx([store]); const r = stores[store].get(key); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
+  async function put(store, obj){ return new Promise((res,rej)=>{ const {stores, trx} = tx([store],'readwrite'); const r = stores[store].put(obj); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
+  async function del(store, key){ return new Promise((res,rej)=>{ const {stores, trx} = tx([store],'readwrite'); const r = stores[store].delete(key); r.onsuccess=()=>res(true); r.onerror=()=>rej(r.error); }); }
+
+  // seed initial data if empty
+  async function seedIfEmpty(){
+    const users = await getAll('users');
+    if(users.length===0){
+      const teacherId = uid();
+      const teacher = {id:teacherId, username:'Turkadmin', passwordHash: await hash('Turkadmin123'), role:'teacher', createdAt:new Date().toISOString()};
+      await put('users', teacher);
+      // initial sample group
+      const gid = uid();
+      await put('vocabGroups', {id:gid, title:'میوه‌ها', description:'لغات مربوط به میوه‌ها', category:'غذا', items:[{id:uid(), word:'Elma', meaning:'سیب', example:'Elma kırmızı.'}]});
+    }
+  }
+
+  // ------------------ utilities ------------------
+  const uid = ()=>Math.random().toString(36).slice(2,9);
+  async function hash(text){
+    const enc = new TextEncoder(); const data = enc.encode(text);
+    const digest = await crypto.subtle.digest('SHA-256', data);
+    return Array.from(new Uint8Array(digest)).map(b=>b.toString(16).padStart(2,'0')).join('');
+  }
+
+  // simple in-memory session
+  let session = {role:null, username:null, userId:null};
+
+  // ------------------ high-level data API ------------------
+  const Store = {
+    async init(){ await openDB(); await seedIfEmpty(); },
+    // users
+    async createUser({username,password,klass}){ const id = uid(); const user = {id, username, passwordHash: await hash(password), class:klass||'', role:'student', createdAt:new Date().toISOString()}; await put('users', user); return user; },
+    async getUserByUsername(u){ const all = await getAll('users'); return all.find(x=>x.username===u); },
+    async validateUser(username,password){ const u = await this.getUserByUsername(username); if(!u) return null; const h = await hash(password); return h===u.passwordHash? u: null; },
+    async listStudents(){ const all = await getAll('users'); return all.filter(x=>x.role==='student'); },
+    async updateUser(user){ await put('users', user); },
+    async deleteUser(id){ await del('users', id); /* cascade: delete homework/results */ const results = await getAll('results'); for(const r of results.filter(x=>x.studentId===id)) await del('results', r.id); const hw = await getAll('homework'); for(const h of hw.filter(x=>x.studentId===id)) await del('homework', h.id); },
+
+    // vocab groups
+    async listVocab(){ return await getAll('vocabGroups'); },
+    async createVocab(g){ g.id = g.id||uid(); g.items = g.items||[]; g.createdAt = new Date().toISOString(); await put('vocabGroups', g); return g; },
+    async updateVocab(g){ await put('vocabGroups', g); },
+    async deleteVocab(id){ await del('vocabGroups', id); },
+
+    // quizzes
+    async listQuizzes(){ return await getAll('quizzes'); },
+    async createQuiz(q){ q.id = q.id||uid(); q.createdAt=new Date().toISOString(); await put('quizzes', q); return q; },
+    async updateQuiz(q){ await put('quizzes', q); },
+    async deleteQuiz(id){ await del('quizzes', id); },
+
+    // homework
+    async listHomework(){ return await getAll('homework'); },
+    async createHomework(h){ h.id = h.id||uid(); h.status = h.status||'pending'; h.createdAt = new Date().toISOString(); await put('homework', h); return h; },
+    async updateHomework(h){ await put('homework', h); },
+    async deleteHomework(id){ await del('homework', id); },
+
+    // results
+    async listResults(){ return await getAll('results'); },
+    async createResult(r){ r.id = r.id||uid(); r.date = new Date().toISOString(); await put('results', r); return r; },
+
+    // assets (blobs)
+    async storeAsset({id, name, blob, meta}){ id = id||uid(); await put('assets', {id, name, blob, meta, createdAt:new Date().toISOString()}); return id; },
+    async getAsset(id){ return await get('assets', id); },
+
+    // export/import
+    async exportAll(){ const users = await getAll('users'); const vocab = await getAll('vocabGroups'); const quizzes = await getAll('quizzes'); const hw = await getAll('homework'); const results = await getAll('results'); return {users,vocab,quizzes,hw,results}; },
+    async importAll(data){ for(const u of data.users||[]) await put('users', u); for(const v of data.vocab||[]) await put('vocabGroups', v); for(const q of data.quizzes||[]) await put('quizzes', q); for(const h of data.hw||[]) await put('homework', h); for(const r of data.results||[]) await put('results', r); }
+  };
+
+  // ------------------ SPA & UI (re-uses previous structure) ------------------
+  function t(x){return x;} // placeholder
+  function navigate(route){ window.location.hash = route; }
+  async function render(){
+    const root = document.getElementById('app');
+    const route = location.hash.replace('#','') || 'home';
+    root.innerHTML = '';
+    if(route === 'home') return root.appendChild(Home());
+    if(route === 'teacher-login') return root.appendChild(TeacherLogin());
+    if(route === 'student-login') return root.appendChild(StudentLogin());
+    if(route.startsWith('teacher') && session.role === 'teacher') return root.appendChild(await TeacherApp(route));
+    if(route.startsWith('student') && session.role === 'student') return root.appendChild(await StudentApp(route));
+    root.appendChild(Home());
+  }
+
+  window.addEventListener('hashchange',render);
+
+  // init
+  (async()=>{ await Store.init(); // try restore session
+    const s = sessionStorage.getItem('tkk_session_v2'); if(s) session = JSON.parse(s); await render(); })();
+
+  function saveSession(){ sessionStorage.setItem('tkk_session_v2', JSON.stringify(session)); }
+
+  // ------------------ Components ------------------
+  function Home(){ const el = document.createElement('div'); el.className='card'; el.innerHTML = `
+    <h2>خوش آمدید</h2>
+    <p class="muted">لطفا وارد شوید — معلم یا دانش‌آموز.</p>
+    <div class="row" style="margin-top:12px">
+      <div class="col"><button class="btn" onclick="navigate('teacher-login')">ورود معلم</button></div>
+      <div class="col"><button class="btn ghost" onclick="navigate('student-login')">ورود دانش‌آموز</button></div>
+    </div>
+    <div class="gap"></div>
+    <div class="muted">توجه: اعتبار ورود معلم در داده‌های سرور/DB ذخیره شده (در صفحه نمایش داده نمی‌شود).</div>
+    <div style="margin-top:12px"><button class='btn ghost' id='exportBtn'>خروجی پشتیبان (Export JSON)</button> <button class='btn ghost' id='importBtn'>بازیابی (Import)</button></div>
+  `;
+    setTimeout(()=>{
+      el.querySelector('#exportBtn').onclick = async ()=>{
+        const data = await Store.exportAll(); const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href=url; a.download = 'tkk_backup.json'; a.click(); URL.revokeObjectURL(url);
+      };
+      el.querySelector('#importBtn').onclick = ()=>{
+        const ip = document.createElement('input'); ip.type='file'; ip.accept='application/json'; ip.onchange = async (e)=>{ const f = e.target.files[0]; if(!f) return; const txt = await f.text(); try{ const data = JSON.parse(txt); await Store.importAll(data); alert('بازیابی انجام شد'); await render(); }catch(err){ alert('فایل نامعتبر'); } }; ip.click();
+      }
+    },10);
+    return el;
+  }
+
+  function TeacherLogin(){ const el = document.createElement('div'); el.className='card'; el.innerHTML = `
+    <h2>ورود معلم</h2>
+    <label>نام کاربری</label><input id="tuser" type="text" />
+    <label>رمز عبور</label><input id="tpass" type="password" />
+    <div class="gap"></div>
+    <div class="row"><div class="col"><button class="btn" id="tbtn">ورود</button></div></div>
+  `; setTimeout(()=>{ el.querySelector('#tbtn').onclick = async ()=>{ const u = el.querySelector('#tuser').value.trim(); const p = el.querySelector('#tpass').value; const user = await Store.getUserByUsername(u); if(user && user.role==='teacher'){ const ok = await Store.validateUser(u,p); if(ok){ session.role='teacher'; session.username=u; session.userId=user.id; saveSession(); navigate('teacher/dashboard'); } else alert('نام کاربری یا رمز عبور نادرست'); } else alert('نام کاربری یا رمز عبور نادرست'); }; },10); return el; }
+
+  function StudentLogin(){ const el = document.createElement('div'); el.className='card'; el.innerHTML = `
+    <h2>ورود دانش‌آموز</h2>
+    <label>نام کاربری</label><input id="suser" type="text" />
+    <label>رمز عبور</label><input id="spass" type="password" />
+    <div class="gap"></div>
+    <div class="row"><div class="col"><button class="btn" id="sbtn">ورود</button></div></div>
+  `; setTimeout(()=>{ el.querySelector('#sbtn').onclick = async ()=>{ const u = el.querySelector('#suser').value.trim(); const p = el.querySelector('#spass').value; const ok = await Store.validateUser(u,p); if(ok && ok.role==='student'){ session.role='student'; session.username=u; session.userId=ok.id; saveSession(); navigate('student/dashboard'); } else alert('نام کاربری یا رمز عبور نادرست'); }; },10); return el; }
+
+  // Teacher App and pages (async-aware)
+  async function TeacherApp(route){ const wrap = document.createElement('div'); wrap.className='split'; const sidebar = document.createElement('div'); sidebar.className='sidebar'; const main = document.createElement('div'); main.className='main';
+    const menu = document.createElement('div'); menu.className='card menu'; const items = [ {id:'dashboard',label:'پیشخوان'},{id:'vocab',label:'گروه‌های لغت'},{id:'students',label:'مدیریت دانش آموزان'},{id:'quizzes',label:'مدیریت آزمون‌ها'},{id:'homework',label:'تکالیف دانش آموزان'},{id:'results',label:'نتایج دانش‌آموزان'},{id:'logout',label:'خروج'} ];
+    items.forEach(it=>{ const btn = document.createElement('button'); btn.innerText = it.label; btn.onclick = ()=>{ if(it.id==='logout'){ session={role:null,username:null,userId:null}; sessionStorage.removeItem('tkk_session_v2'); navigate('home'); } else navigate('teacher/'+it.id); }; if(route.endsWith(it.id)) btn.classList.add('active'); menu.appendChild(btn); }); sidebar.appendChild(menu);
+    const page = route.split('/')[1] || 'dashboard'; if(page==='dashboard') main.appendChild(await teacherDashboard()); if(page==='vocab') main.appendChild(await teacherVocab()); if(page==='students') main.appendChild(await teacherStudents()); if(page==='quizzes') main.appendChild(await teacherQuizzes()); if(page==='homework') main.appendChild(await teacherHomework()); if(page==='results') main.appendChild(await teacherResults()); wrap.appendChild(sidebar); wrap.appendChild(main); return wrap; }
+
+  async function teacherDashboard(){ const el = document.createElement('div'); el.className='card'; const students = await Store.listStudents(); const vocab = await Store.listVocab(); const quizzes = await Store.listQuizzes(); el.innerHTML = `<h2>پیشخوان معلم</h2><p class='muted'>${session.username||''}</p><div class='gap'></div><div class='row'><div class='col card'><h3>آمار</h3><p class='muted'>تعداد دانش‌آموزان: ${students.length}</p><p class='muted'>گروه‌های لغت: ${vocab.length}</p><p class='muted'>آزمون‌ها: ${quizzes.length}</p></div><div class='col card'><h3>عملیات سریع</h3><button class='btn' onclick=\"navigate('teacher/vocab')\">مدیریت لغات</button><button class='btn ghost' onclick=\"navigate('teacher/students')\">مدیریت دانش‌آموزان</button></div></div>`; return el; }
+
+  async function teacherVocab(){ const el = document.createElement('div'); el.className='card'; el.innerHTML = `<h2>گروه‌های لغت</h2><div class='gap'></div><div style='display:flex;gap:8px;margin-bottom:8px'><input id='vg_title' placeholder='عنوان گروه' /><input id='vg_cat' placeholder='دسته‌بندی (مثال: میوه‌ها)' /><button class='btn' id='vg_add'>ساخت گروه</button></div><div id='vocab_list' class='list'></div>`;
+    await refreshList();
+    async function refreshList(){ const list = el.querySelector('#vocab_list'); list.innerHTML=''; const groups = await Store.listVocab(); groups.forEach(g=>{
+        const item = document.createElement('div'); item.className='list-item'; const left = document.createElement('div'); left.innerHTML = `<strong>${g.title}</strong><div class='muted'>${g.description||''}</div><div class='muted'>دسته: ${g.category||''}</div>`;
+        const right = document.createElement('div'); const edit = document.createElement('button'); edit.className='btn ghost'; edit.innerText='ویرایش'; edit.onclick=()=>editGroup(g.id); const del = document.createElement('button'); del.className='btn'; del.innerText='حذف'; del.onclick=async ()=>{ if(confirm('حذف گروه؟')){ await Store.deleteVocab(g.id); await refreshList(); }}; right.appendChild(edit); right.appendChild(del); item.appendChild(left); item.appendChild(right); list.appendChild(item);
+    }); }
+    setTimeout(()=>{ el.querySelector('#vg_add').onclick = async ()=>{ const title = el.querySelector('#vg_title').value.trim(); const cat = el.querySelector('#vg_cat').value.trim(); if(!title) return alert('عنوان لازم است'); await Store.createVocab({title, description:'', category:cat, items:[]}); el.querySelector('#vg_title').value=''; el.querySelector('#vg_cat').value=''; await refreshList(); } },10);
+
+    async function editGroup(gid){
+      const group = (await Store.listVocab()).find(x=>x.id===gid);
+      const modal = document.createElement('div'); modal.className='card'; modal.style.marginTop='12px'; modal.innerHTML = `
+        <h3>ویرایش گروه: ${group.title}</h3>
+        <label>عنوان</label><input id='eg_title' value='${group.title}' />
+        <label>توضیحات</label><textarea id='eg_desc'>${group.description||''}</textarea>
+        <label>دسته‌بندی</label><input id='eg_cat' value='${group.category||''}' />
+        <div class='gap'></div>
+        <h4>آیتم‌ها</h4>
+        <div id='items_area' class='list'></div>
+        <div class='gap'></div>
+        <div style='display:flex;gap:8px'><input id='new_word' placeholder='کلمه (ترکی)' /><input id='new_mean' placeholder='معنی (فارسی)' /><input id='new_example' placeholder='مثال (اختیاری)' /><input type='file' id='new_asset' /></div>
+        <div class='gap'></div>
+        <div class='row'><div class='col'><button class='btn' id='save_group'>ذخیره</button></div></div>
+      `; el.appendChild(modal);
+      const area = modal.querySelector('#items_area'); function redrawItems(){ area.innerHTML=''; (group.items||[]).forEach((it,idx)=>{
+        const row = document.createElement('div'); row.className='list-item'; row.innerHTML = `<div>${idx+1}. <strong>${it.word}</strong> — ${it.meaning}<div class='muted'>${it.example||''}</div></div>`;
+        const r = document.createElement('div'); const d = document.createElement('button'); d.className='btn'; d.innerText='حذف'; d.onclick=async ()=>{ group.items.splice(idx,1); await Store.updateVocab(group); redrawItems(); };
+        const up = document.createElement('button'); up.className='btn ghost'; up.innerText='↑'; up.onclick=async ()=>{ if(idx>0){ [group.items[idx-1], group.items[idx]]=[group.items[idx], group.items[idx-1]]; await Store.updateVocab(group); redrawItems(); }};
+        const down = document.createElement('button'); down.className='btn ghost'; down.innerText='↓'; down.onclick=async ()=>{ if(idx<group.items.length-1){ [group.items[idx+1], group.items[idx]]=[group.items[idx], group.items[idx+1]]; await Store.updateVocab(group); redrawItems(); }};
+        r.appendChild(up); r.appendChild(down); r.appendChild(d); row.appendChild(r); area.appendChild(row);
+      }); }
+      redrawItems();
+      modal.querySelector('#new_asset').onchange = ()=>{};
+      modal.querySelector('#save_group').onclick = async ()=>{
+        group.title = modal.querySelector('#eg_title').value.trim(); group.description = modal.querySelector('#eg_desc').value.trim(); group.category = modal.querySelector('#eg_cat').value.trim(); await Store.updateVocab(group); modal.remove(); await refreshList(); };
+      // add item UI
+      const newWordEl = modal.querySelector('#new_word'); const newMeanEl = modal.querySelector('#new_mean'); const newExampleEl = modal.querySelector('#new_example'); const assetEl = modal.querySelector('#new_asset');
+      newMeanEl.insertAdjacentHTML('afterend','<button class="btn" id="add_item">افزودن</button>');
+      modal.querySelector('#add_item').onclick = async ()=>{
+        const w = newWordEl.value.trim(); const m = newMeanEl.value.trim(); const ex = newExampleEl.value.trim(); if(!w||!m) return alert('کلمه و معنی لازم است');
+        const item = {id:uid(), word:w, meaning:m, example:ex, assetId:null};
+        if(assetEl.files && assetEl.files[0]){
+          const f = assetEl.files[0]; const aId = await Store.storeAsset({name:f.name, blob:f, meta:{owner:'vocab', word:w}}); item.assetId = aId;
+        }
+        group.items = group.items || []; group.items.push(item); await Store.updateVocab(group); newWordEl.value=''; newMeanEl.value=''; newExampleEl.value=''; assetEl.value=''; redrawItems();
+      };
+    }
+    return el; }
+
+  async function teacherStudents(){ const el = document.createElement('div'); el.className='card'; el.innerHTML = `
+    <h2>مدیریت دانش‌آموزان</h2>
+    <div style='display:flex;gap:8px;margin-bottom:8px'><input id='stu_user' placeholder='نام کاربری' /><input id='stu_pass' placeholder='رمز عبور' /><input id='stu_class' placeholder='کلاس/گروه' /><button class='btn' id='stu_add'>افزودن دانش‌آموز</button></div>
+    <div id='stu_list' class='list'></div>
+  `;
+    await refresh(); async function refresh(){ const list = el.querySelector('#stu_list'); list.innerHTML=''; const studs = await Store.listStudents(); studs.forEach(u=>{ const it = document.createElement('div'); it.className='list-item'; it.innerHTML = `<div><strong>${u.username}</strong><div class='muted'>کلاس: ${u.class||''}</div></div>`; const r = document.createElement('div'); const edit = document.createElement('button'); edit.className='btn ghost'; edit.innerText='ویرایش'; edit.onclick=async ()=>{ const nu = prompt('نام کاربری', u.username); if(!nu) return; const np = prompt('رمز عبور (خالی برای نگه داشتن)', ''); if(np) u.passwordHash = await hash(np); const nc = prompt('کلاس', u.class||''); u.username = nu; u.class = nc; await Store.updateUser(u); await refresh(); }; const del = document.createElement('button'); del.className='btn'; del.innerText='حذف'; del.onclick=async ()=>{ if(confirm('حذف دانش‌آموز؟')){ await Store.deleteUser(u.id); await refresh(); }}; r.appendChild(edit); r.appendChild(del); it.appendChild(r); list.appendChild(it); }); }
+    setTimeout(()=>{ el.querySelector('#stu_add').onclick = async ()=>{ const un = el.querySelector('#stu_user').value.trim(); const pw = el.querySelector('#stu_pass').value; const cl = el.querySelector('#stu_class').value.trim(); if(!un||!pw) return alert('نام کاربری و رمز عبور لازم است'); if(await Store.getUserByUsername(un)) return alert('این نام کاربری قبلا وجود دارد'); await Store.createUser({username:un,password:pw,klass:cl}); el.querySelector('#stu_user').value=''; el.querySelector('#stu_pass').value=''; el.querySelector('#stu_class').value=''; await refresh(); } },10);
+    return el; }
+
+  async function teacherQuizzes(){ const el = document.createElement('div'); el.className='card'; el.innerHTML = `<h2>مدیریت آزمون‌ها</h2><div style='display:flex;gap:8px;margin-bottom:8px'><input id='q_title' placeholder='عنوان آزمون' /><select id='q_group'><option value=''>انتخاب گروه لغت (اختیاری)</option></select><button class='btn' id='q_add'>ساخت آزمون</button></div><div id='quiz_list' class='list'></div>`;
+    await refresh(); async function refresh(){ const sel = el.querySelector('#q_group'); const groups = await Store.listVocab(); sel.innerHTML = '<option value="">انتخاب گروه لغت (اختیاری)</option>' + groups.map(g=>`<option value="${g.id}">${g.title}</option>`).join(''); const list = el.querySelector('#quiz_list'); list.innerHTML=''; const quizzes = await Store.listQuizzes(); quizzes.forEach(q=>{ const it = document.createElement('div'); it.className='list-item'; it.innerHTML = `<div><strong>${q.title}</strong><div class='muted'>گروه: ${groups.find(g=>g.id===q.groupId)?.title||'—'}</div></div>`; const r = document.createElement('div'); const edit = document.createElement('button'); edit.className='btn ghost'; edit.innerText='ویرایش'; edit.onclick=()=>editQuiz(q.id); const del = document.createElement('button'); del.className='btn'; del.innerText='حذف'; del.onclick=async ()=>{ if(confirm('حذف آزمون؟')){ await Store.deleteQuiz(q.id); await refresh(); }}; r.appendChild(edit); r.appendChild(del); it.appendChild(r); list.appendChild(it); }); }
+    setTimeout(()=>{ el.querySelector('#q_add').onclick = async ()=>{ const t = el.querySelector('#q_title').value.trim(); const gid = el.querySelector('#q_group').value||null; if(!t) return alert('عنوان لازم است'); await Store.createQuiz({title:t, groupId:gid, questions:[], prefs:{shuffleQ:false, shuffleOptions:false, timeLimit:0, passing:50, retake:true}}); el.querySelector('#q_title').value=''; await refresh(); } },10);
+
+    async function editQuiz(qid){ const q = (await Store.listQuizzes()).find(x=>x.id===qid);
+      const modal = document.createElement('div'); modal.className='card'; modal.style.marginTop='12px'; modal.innerHTML = `
+        <h3>ویرایش آزمون: ${q.title}</h3>
+        <label>عنوان</label><input id='eq_title' value='${q.title}' />
+        <label>تنظیمات</label>
+        <div class='muted'>پاسخ صحیح را می‌توانید در هر سوال تعیین کنید</div>
+        <div style='display:flex;gap:8px;margin-top:8px'><label><input type='checkbox' id='opt_shuffleQ' ${q.prefs.shuffleQ? 'checked':''}/> جابجا کردن سوال‌ها</label><label><input type='checkbox' id='opt_shuffleO' ${q.prefs.shuffleOptions? 'checked':''}/> جابجا کردن گزینه‌ها</label></div>
+        <div class='gap'></div>
+        <h4>سوالات</h4>
+        <div id='q_area' class='list'></div>
+        <div class='gap'></div>
+        <h4>افزودن سوال</h4>
+        <label>متن سوال</label><input id='new_q_text' />
+        <label>گزینه 1</label><input id='new_q_o1' />
+        <label>گزینه 2</label><input id='new_q_o2' />
+        <label>گزینه 3</label><input id='new_q_o3' />
+        <label>پاسخ صحیح (1/2/3)</label><input id='new_q_correct' />
+        <label>توضیح اختیاری</label><input id='new_q_exp' />
+        <div class='gap'></div>
+        <div class='row'><div class='col'><button class='btn' id='add_q_btn'>افزودن سوال</button></div></div>
+        <div class='gap'></div>
+        <div class='row'><div class='col'><button class='btn' id='save_q'>ذخیره</button></div></div>
+      `; document.getElementById('app').appendChild(modal);
+      const area = modal.querySelector('#q_area'); function redrawQ(){ area.innerHTML=''; (q.questions||[]).forEach((qq, idx)=>{ const row = document.createElement('div'); row.className='list-item'; row.innerHTML = `<div><strong>${idx+1}. ${qq.text}</strong><div class='muted'>گزینه‌ها: ${qq.options.join(' | ')} — پاسخ: ${qq.correct+1}</div></div>`; const r = document.createElement('div'); const del = document.createElement('button'); del.className='btn'; del.innerText='حذف'; del.onclick=async ()=>{ q.questions.splice(idx,1); await Store.updateQuiz(q); redrawQ(); }; r.appendChild(del); row.appendChild(r); area.appendChild(row); }); }
+      redrawQ(); modal.querySelector('#add_q_btn').onclick = async ()=>{ const text = modal.querySelector('#new_q_text').value.trim(); const o1 = modal.querySelector('#new_q_o1').value.trim(); const o2 = modal.querySelector('#new_q_o2').value.trim(); const o3 = modal.querySelector('#new_q_o3').value.trim(); const corr = parseInt(modal.querySelector('#new_q_correct').value||'1')-1; const exp = modal.querySelector('#new_q_exp').value.trim(); if(!text||!o1||!o2||!o3) return alert('تمام فیلدها لازم است'); q.questions = q.questions||[]; q.questions.push({id:uid(), text, options:[o1,o2,o3], correct: isNaN(corr)?0:corr, explanation:exp}); await Store.updateQuiz(q); modal.querySelector('#new_q_text').value=''; modal.querySelector('#new_q_o1').value=''; modal.querySelector('#new_q_o2').value=''; modal.querySelector('#new_q_o3').value=''; modal.querySelector('#new_q_correct').value=''; modal.querySelector('#new_q_exp').value=''; redrawQ(); };
+      modal.querySelector('#save_q').onclick = async ()=>{ q.title = modal.querySelector('#eq_title').value.trim(); q.prefs.shuffleQ = !!modal.querySelector('#opt_shuffleQ').checked; q.prefs.shuffleOptions = !!modal.querySelector('#opt_shuffleO').checked; await Store.updateQuiz(q); modal.remove(); await render(); };
+    }
+    return el; }
+
+  async function teacherHomework(){ const el = document.createElement('div'); el.className='card'; el.innerHTML = `<h2>تکالیف دانش‌آموزان</h2><div id='hw_list' class='list'></div>`; await refresh(); async function refresh(){ const list = el.querySelector('#hw_list'); list.innerHTML=''; const hw = await Store.listHomework(); const users = await getAllUsers(); hw.forEach(h=>{ const it = document.createElement('div'); it.className='list-item'; const student = users.find(u=>u.id===h.studentId); it.innerHTML = `<div><strong>${h.title}</strong><div class='muted'>دانش‌آموز: ${student?.username||'—'} — وضعیت: ${h.status}</div></div>`; const r = document.createElement('div'); const open = document.createElement('button'); open.className='btn ghost'; open.innerText='باز کردن'; open.onclick=()=>{ const modal = document.createElement('div'); modal.className='card'; modal.style.marginTop='12px'; modal.innerHTML = `<h3>${h.title}</h3><div class='muted'>از: ${student?.username||''}</div><pre style='white-space:pre-wrap'>${h.content}</pre><label>نظر معلم</label><textarea id='tcmt'>${h.teacherComment||''}</textarea><div style='display:flex;gap:8px;margin-top:8px'><button class='btn' id='mark_ok'>بررسی شد</button><button class='btn ghost' id='mark_fix'>نیاز به اصلاح</button><button class='btn' id='download_txt'>دانلود .txt</button></div>`; el.appendChild(modal); modal.querySelector('#mark_ok').onclick = async ()=>{ h.status='بررسی شد'; h.teacherComment = modal.querySelector('#tcmt').value; await Store.updateHomework(h); modal.remove(); refresh(); } ; modal.querySelector('#mark_fix').onclick = async ()=>{ h.status='نیاز به اصلاح'; h.teacherComment = modal.querySelector('#tcmt').value; await Store.updateHomework(h); modal.remove(); refresh(); } ; modal.querySelector('#download_txt').onclick = ()=>{ const blob = new Blob([h.content], {type:'text/plain;charset=utf-8'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = (h.title||'homework') + '.txt'; a.click(); URL.revokeObjectURL(url); } } ; const del = document.createElement('button'); del.className='btn'; del.innerText='حذف'; del.onclick=async ()=>{ if(confirm('حذف؟')){ await Store.deleteHomework(h.id); refresh(); }}; r.appendChild(open); r.appendChild(del); it.appendChild(r); list.appendChild(it); }); }
+    return el; }
+
+  async function teacherResults(){ const el = document.createElement('div'); el.className='card'; el.innerHTML = `<h2>نتایج دانش‌آموزان</h2><div id='results_area'></div>`; const area = el.querySelector('#results_area'); const results = await Store.listResults(); if(results.length===0) area.innerHTML = '<div class="muted">نتیجه‌ای ثبت نشده است</div>'; const users = await getAllUsers(); const quizzes = await Store.listQuizzes(); results.forEach(r=>{ const student = users.find(u=>u.id===r.studentId); const q = quizzes.find(x=>x.id===r.quizId); const elr = document.createElement('div'); elr.className='card'; elr.style.marginBottom='8px'; elr.innerHTML = `<strong>${student?.username||''} — ${q?.title||''}</strong><div class='muted'>امتیاز: ${r.score}% — زمان: ${r.timeSpent || 0}s</div>`; area.appendChild(elr); }); return el; }
+
+  // Student App
+  async function StudentApp(route){ const wrap = document.createElement('div'); wrap.className='split'; const sidebar = document.createElement('div'); sidebar.className='sidebar'; const main = document.createElement('div'); main.className='main'; const menu = document.createElement('div'); menu.className='card menu'; const items = [ {id:'dashboard',label:'پیشخوان'},{id:'flashcards',label:'مطالعه فلش‌کارت‌ها'},{id:'quizzes',label:'آزمون‌ها'},{id:'submit_hw',label:'ارسال تکلیف'},{id:'logout',label:'خروج'}]; items.forEach(it=>{ const btn = document.createElement('button'); btn.innerText = it.label; btn.onclick = ()=>{ if(it.id==='logout'){ session={role:null,username:null,userId:null}; sessionStorage.removeItem('tkk_session_v2'); navigate('home'); } else navigate('student/'+it.id); }; menu.appendChild(btn); }); sidebar.appendChild(menu); const page = route.split('/')[1] || 'dashboard'; if(page==='dashboard') main.appendChild(await studentDashboard()); if(page==='flashcards') main.appendChild(await studentFlashcards()); if(page==='quizzes') main.appendChild(await studentQuizzes()); if(page==='submit_hw') main.appendChild(await studentSubmitHW()); wrap.appendChild(sidebar); wrap.appendChild(main); return wrap; }
+
+  async function studentDashboard(){ const el = document.createElement('div'); el.className='card'; const results = await Store.listResults(); const myResults = results.filter(r=> r.studentId === session.userId); el.innerHTML = `<h2>پیشخوان دانش‌آموز</h2><p class='muted'>${session.username}</p><div class='row'><div class='col card'><h4>پیشرفت</h4><div class='muted'>آزمون‌ها: ${myResults.length}</div></div></div>`; return el; }
+
+  async function studentFlashcards(){ const el = document.createElement('div'); el.className='card'; el.innerHTML = `<h2>مطالعه فلش‌کارت‌ها</h2><label>انتخاب گروه</label><select id='fc_group'><option value=''>همه گروه‌ها</option></select><div class='card-viewer'><div class='flashcard'><div class='card-inner' id='fc_inner' style='position:relative'></div></div><div class='controls'><button class='btn ghost' id='prev'>قبلی</button><button class='btn' id='flip'>برگرداندن</button><button class='btn ghost' id='next'>بعدی</button></div><div style='width:100%;max-width:600px;display:flex;justify-content:space-between;align-items:center'><label><input type='checkbox' id='mark_learned'/> علامت‌گذاری به عنوان آموخته شده</label><div id='progress' class='muted'>0 / 0</div></div></div>`;
+    const sel = el.querySelector('#fc_group'); const groups = await Store.listVocab(); sel.innerHTML = '<option value="">همه گروه‌ها</option>' + groups.map(g=>`<option value="${g.id}">${g.title}</option>`).join(''); let cards = groups.flatMap(g=> g.items.map(it=>({groupId:g.id, groupTitle:g.title, ...it}))); let idx=0; let flipped=false; const inner = el.querySelector('#fc_inner'); const learnedKey = 'tkk_learned_'+session.userId;
+    function renderCard(){ if(cards.length===0){ inner.innerHTML = '<div class="card-face card-front">هیچ کارت موجود نیست</div>'; el.querySelector('#progress').innerText='0 / 0'; return; } const c = cards[idx]; inner.innerHTML = `<div class='card-inner' id='ci' style='position:relative'><div class='card-face card-front' style='position:absolute'><div style='text-align:center'><div class='muted'>${c.groupTitle}</div><div style='font-weight:600;font-size:28px;margin-top:8px'>${c.word}</div><div class='muted' style='margin-top:8px'>${c.example||''}</div></div></div><div class='card-face card-back' style='position:absolute'><div style='text-align:center'><div style='font-weight:600;font-size:24px'>${c.meaning}</div></div></div></div>`; const ci = inner.querySelector('#ci'); ci.style.transform = flipped? 'rotateY(180deg)':'none'; el.querySelector('#progress').innerText = (idx+1) + ' / ' + cards.length; const learned = JSON.parse(localStorage.getItem(learnedKey)||'[]'); el.querySelector('#mark_learned').checked = learned.includes(c.id); }
+    renderCard(); el.querySelector('#flip').onclick = ()=>{ flipped = !flipped; const ci = inner.querySelector('.card-inner'); if(ci) ci.style.transform = flipped? 'rotateY(180deg)':'none'; }
+    el.querySelector('#next').onclick = ()=>{ if(cards.length===0) return; idx = (idx+1)%cards.length; flipped=false; renderCard(); }
+    el.querySelector('#prev').onclick = ()=>{ if(cards.length===0) return; idx = (idx-1+cards.length)%cards.length; flipped=false; renderCard(); }
+    el.querySelector('#fc_group').onchange = (e)=>{ const gid = e.target.value; cards = (gid? groups.find(g=>g.id===gid)?.items.map(it=>({groupId:gid, groupTitle: groups.find(g=>g.id===gid)?.title, ...it})): groups.flatMap(g=> g.items.map(it=>({groupId:g.id, groupTitle:g.title, ...it})))); idx=0; renderCard(); }
+    el.querySelector('#mark_learned').onchange = (e)=>{ const learned = JSON.parse(localStorage.getItem(learnedKey)||'[]'); const c = cards[idx]; if(!c) return; if(e.target.checked){ if(!learned.includes(c.id)) learned.push(c.id); } else { const i = learned.indexOf(c.id); if(i>=0) learned.splice(i,1); } localStorage.setItem(learnedKey, JSON.stringify(learned)); }
+    return el; }
+
+  async function studentQuizzes(){ const el = document.createElement('div'); el.className='card'; el.innerHTML = `<h2>آزمون‌ها</h2><div id='q_area'></div>`; const area = el.querySelector('#q_area'); const quizzes = await Store.listQuizzes(); const vocab = await Store.listVocab(); quizzes.forEach(q=>{ const it = document.createElement('div'); it.className='list-item'; it.innerHTML = `<div><strong>${q.title}</strong><div class='muted'>گروه: ${vocab.find(g=>g.id===q.groupId)?.title||'—'}</div></div>`; const r = document.createElement('div'); const start = document.createElement('button'); start.className='btn'; start.innerText='شروع آزمون'; start.onclick=()=>startQuiz(q.id); r.appendChild(start); it.appendChild(r); area.appendChild(it); }); return el;
+    async function startQuiz(qid){ const q = (await Store.listQuizzes()).find(x=>x.id===qid); if(!q) return alert('آزمون پیدا نشد'); const modal = document.createElement('div'); modal.className='card'; modal.style.marginTop='12px'; const questions = (q.questions||[]).map(o=>({...o})); if(q.prefs.shuffleQ) questions.sort(()=>Math.random()-0.5); let cur=0; let correctCount=0; const startTime = Date.now(); function show(){ modal.innerHTML = `<h3>${q.title}</h3><div class='muted'>سوال ${cur+1} / ${questions.length}</div><div style='margin-top:8px'><strong>${questions[cur].text}</strong></div><div style='display:flex;flex-direction:column;gap:6px;margin-top:8px'>${questions[cur].options.map((op,i)=>`<button class='btn option' data-i='${i}'>${op}</button>`).join('')}</div>`; modal.querySelectorAll('.option').forEach(btn=>btn.onclick = (e)=>{ const chosen = parseInt(btn.dataset.i); if(chosen===questions[cur].correct) correctCount++; cur++; if(cur>=questions.length){ finish(); } else show(); }); }
+      function finish(){ const total = questions.length; const score = total? Math.round((correctCount/total)*100):0; const timeSpent = Math.round((Date.now()-startTime)/1000); modal.innerHTML = `<h3>نتیجه</h3><div class='muted'>امتیاز: ${score}%</div><div class='muted'>پاسخ‌های صحیح: ${correctCount} از ${total}</div>`; awaitStoreResult(score,timeSpent,q.id); }
+      document.getElementById('app').appendChild(modal); show(); async function awaitStoreResult(score,timeSpent,quizId){ const r = {studentId:session.userId, quizId, score, timeSpent}; await Store.createResult(r); }
+    }
+  }
+
+  async function studentSubmitHW(){ const el = document.createElement('div'); el.className='card'; el.innerHTML = `<h2>ارسال تکلیف</h2><label>عنوان تکلیف</label><input id='hw_title' /><label>متن تکلیف</label><textarea id='hw_text' style='height:160px'></textarea><label>پیوست (اختیاری)</label><input type='file' id='hw_file' /><div class='row'><div class='col'><button class='btn' id='hw_send'>ارسال</button></div></div><div class='gap'></div><h3>تکالیف ارسالی</h3><div id='hw_sent' class='list'></div>`;
+    const list = el.querySelector('#hw_sent'); await refresh(); async function refresh(){ list.innerHTML=''; const hw = (await Store.listHomework()).filter(h=> h.studentId === session.userId); hw.forEach(h=>{ const it = document.createElement('div'); it.className='list-item'; it.innerHTML = `<div><strong>${h.title}</strong><div class='muted'>وضعیت: ${h.status}</div></div>`; const r = document.createElement('div'); const open = document.createElement('button'); open.className='btn ghost'; open.innerText='باز کردن'; open.onclick=()=>{ alert('نظر معلم:\\n'+(h.teacherComment||'—')); }; const del = document.createElement('button'); del.className='btn'; del.innerText='حذف'; del.onclick=async ()=>{ if(confirm('حذف؟')){ await Store.deleteHomework(h.id); await refresh(); }}; r.appendChild(open); r.appendChild(del); it.appendChild(r); list.appendChild(it); }); }
+    setTimeout(()=>{ el.querySelector('#hw_send').onclick = async ()=>{ const title = el.querySelector('#hw_title').value.trim(); const content = el.querySelector('#hw_text').value.trim(); const fileEl = el.querySelector('#hw_file'); if(!title||!content) return alert('عنوان و متن لازم است'); const h = {studentId:session.userId, title, content, status:'pending', teacherComment:''}; if(fileEl.files && fileEl.files[0]){ const f = fileEl.files[0]; const assetId = await Store.storeAsset({name:f.name, blob:f, meta:{owner:session.userId}}); h.attachment = assetId; } await Store.createHomework(h); el.querySelector('#hw_title').value=''; el.querySelector('#hw_text').value=''; fileEl.value=''; await refresh(); } },10);
+    return el; }
+
+  // helper to read all users (used above)
+  async function getAllUsers(){ return await getAll('users'); }
+  // expose navigate globally for inline onclicks
+  window.navigate = navigate;
+
+  </script>
+</body>
+</html>
