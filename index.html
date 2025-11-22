@@ -1,0 +1,1081 @@
+﻿<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>T.K.K — Türkçe Konuşma Kulübü</title>
+  <style>
+    :root{
+      --red:#d32f2f;
+      --dark-red:#b71c1c;
+      --white:#ffffff;
+      --muted:#f5f5f5;
+      --text:#222;
+      --card-radius:14px;
+      --gap:12px;
+      font-family: "Tahoma","Segoe UI","Helvetica Neue",Arial;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      background:linear-gradient(180deg,#fff 0%, #fff 60%, #fff 100%);
+      color:var(--text);
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      min-height:100vh;
+      display:flex;
+      flex-direction:column;
+    }
+    header{
+      background:var(--red);
+      color:var(--white);
+      padding:14px 18px;
+      display:flex;
+      align-items:center;
+      gap:12px;
+      justify-content:space-between;
+    }
+    header h1{margin:0;font-size:18px}
+    .container{padding:16px;flex:1;display:flex;gap:16px}
+    /* layout */
+    .sidebar{
+      width:260px;
+      background:var(--muted);
+      border-radius:12px;
+      padding:12px;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      min-height:420px;
+    }
+    .main{
+      flex:1;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+    .card{
+      background:var(--white);
+      border-radius:var(--card-radius);
+      padding:12px;
+      box-shadow:0 6px 18px rgba(0,0,0,0.06);
+    }
+    button, .btn{
+      background:var(--red);
+      color:var(--white);
+      border:none;
+      padding:8px 12px;
+      border-radius:8px;
+      cursor:pointer;
+      font-weight:600;
+    }
+    .btn-ghost{
+      background:transparent;
+      color:var(--red);
+      border:1px solid var(--red);
+      padding:8px 10px;
+    }
+    input[type="text"], input[type="password"], textarea, select {
+      width:100%;
+      padding:10px;
+      border-radius:8px;
+      border:1px solid #ddd;
+      margin:6px 0 10px 0;
+      font-size:14px;
+      direction:rtl;
+    }
+    label{font-size:13px;margin-bottom:4px;display:block}
+    .menu-item{padding:8px;border-radius:8px;cursor:pointer}
+    .menu-item:hover{background:#ffecec}
+    .muted{color:#666;font-size:13px}
+    /* teacher/student header */
+    .user-info{display:flex;align-items:center;gap:10px}
+    .chip{background:var(--white);padding:6px 10px;border-radius:999px;border:1px solid rgba(0,0,0,0.06)}
+    /* lists */
+    .list{display:flex;flex-direction:column;gap:8px}
+    .list-item{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:8px;border-radius:8px;border:1px dashed #eee}
+    .small{font-size:12px}
+    /* flashcard */
+    .flashcard-area{display:flex;flex-direction:column;align-items:center;gap:10px}
+    .card-large{width:100%;max-width:760px;height:320px;display:flex;align-items:center;justify-content:center;position:relative;perspective:1200px}
+    .fc-inner{width:100%;height:100%;border-radius:14px;background:var(--white);box-shadow:0 14px 30px rgba(0,0,0,0.08);display:flex;align-items:center;justify-content:center;font-size:28px;padding:18px;cursor:pointer;transition:transform 0.6s;transform-style:preserve-3d;position:relative}
+    .fc-inner.flipped{transform:rotateY(180deg)}
+    .fc-front,.fc-back{position:absolute;backface-visibility:hidden;display:flex;align-items:center;justify-content:center;width:100%;height:100%;padding:20px}
+    .fc-back{transform:rotateY(180deg);font-size:20px}
+    .progress{height:10px;background:#eee;border-radius:999px;overflow:hidden}
+    .progress > div{height:100%;background:linear-gradient(90deg,var(--red),var(--dark-red));width:0%}
+    /* responsive */
+    @media (max-width:900px){
+      .container{flex-direction:column;padding:12px}
+      .sidebar{width:100%;order:2}
+    }
+    /* right-to-left fixes for small controls */
+    .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .spaced{display:flex;justify-content:space-between;align-items:center}
+    .controls{display:flex;gap:8px;flex-wrap:wrap}
+    .danger{background:#fff;color:var(--red);border:1px solid rgba(211,47,47,0.15)}
+    .hidden{display:none}
+    .center{text-align:center}
+    .tiny{font-size:12px;color:#666}
+    /* table */
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:8px;border-bottom:1px solid #f1f1f1;text-align:right}
+  </style>
+</head>
+<body>
+  <header>
+    <div style="display:flex;gap:12px;align-items:center">
+      <img src="" alt="" style="width:44px;height:44px;border-radius:8px;background:var(--white)"/>
+      <h1>باشگاه مکالمه ترکی — T.K.K</h1>
+    </div>
+    <div class="user-info">
+      <div id="currentRole" class="chip tiny">وارد نشده</div>
+      <button id="logoutBtn" class="btn hidden">خروج</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- SIDEBAR: Menu (dynamic) -->
+    <aside class="sidebar card" id="sidebar">
+      <div id="authArea" class="card">
+        <div id="loginForms">
+          <!-- Teacher Login -->
+          <div id="teacherLoginCard">
+            <label>ورود معلم</label>
+            <input id="teacherUser" placeholder="نام کاربری" value="">
+            <input id="teacherPass" placeholder="رمز عبور" type="password" value="">
+            <div class="row">
+              <button id="teacherLoginBtn" class="btn">ورود</button>
+            </div>
+            <div class="tiny muted"> معلم : <b> ورود ادمین / 1</b></div>
+          </div>
+          <hr>
+          <div id="studentLoginCard">
+            <label>ورود دانش‌آموز</label>
+            <input id="studentUser" placeholder="نام کاربری">
+            <input id="studentPass" placeholder="رمز عبور" type="password">
+            <div class="row">
+              <button id="studentLoginBtn" class="btn">ورود</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Teacher menu -->
+      <div id="teacherMenu" class="hidden">
+        <div class="menu-item" data-page="teacher-dashboard">داشبورد معلم</div>
+        <div class="menu-item" data-page="vocab-groups">گروه‌های لغت</div>
+        <div class="menu-item" data-page="students-management">مدیریت دانش‌آموزان</div>
+        <div class="menu-item" data-page="quizzes-management">مدیریت آزمون‌ها</div>
+        <div class="menu-item" data-page="homeworks-management">تکالیف دانش‌آموزان</div>
+        <div class="menu-item" data-page="student-performance">نتایج دانش‌آموزان</div>
+        <div class="menu-item" id="toStudentView">نمای داشبورد دانش‌آموز</div>
+      </div>
+
+      <!-- Student menu -->
+      <div id="studentMenu" class="hidden">
+        <div class="menu-item" data-page="student-dashboard">داشبورد دانش‌آموز</div>
+        <div class="menu-item" data-page="flashcards-study">مطالعه فلش‌کارت‌ها</div>
+        <div class="menu-item" data-page="student-quizzes">آزمون‌ها</div>
+        <div class="menu-item" data-page="submit-homework">ارسال تکلیف</div>
+      </div>
+
+      <div style="flex:1"></div>
+      <div class="tiny muted center">طراحی شده برای دوره ترکی برای فارسی‌زبانان</div>
+    </aside>
+
+    <!-- MAIN -->
+    <section class="main">
+      <!-- multiple pages -->
+      <div id="pages">
+
+        <!-- TEACHER DASHBOARD -->
+        <div id="teacher-dashboard" class="card hidden">
+          <div class="spaced">
+            <h2>داشبورد معلم</h2>
+            <div class="tiny muted">تعداد گروه‌های لغت: <span id="countGroups">0</span> — دانش‌آموزان: <span id="countStudents">0</span></div>
+          </div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap">
+            <div class="card" style="flex:1;min-width:240px">
+              <h3>گروه‌های لغت</h3>
+              <div class="tiny muted">ایجاد و مدیریت واژگان</div>
+              <div style="margin-top:8px">
+                <button id="openVocabGroups" class="btn">مدیریت گروه‌ها</button>
+              </div>
+            </div>
+            <div class="card" style="flex:1;min-width:240px">
+              <h3>دانش‌آموزان</h3>
+              <div class="tiny muted">افزودن / ویرایش حساب‌ها</div>
+              <div style="margin-top:8px">
+                <button id="openStudents" class="btn">مدیریت دانش‌آموزان</button>
+              </div>
+            </div>
+            <div class="card" style="flex:1;min-width:240px">
+              <h3>آزمون‌ها</h3>
+              <div class="tiny muted">ساخت آزمون مرتبط با گروه‌های لغت</div>
+              <div style="margin-top:8px">
+                <button id="openQuizzes" class="btn">مدیریت آزمون‌ها</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- VOCAB GROUPS -->
+        <div id="vocab-groups" class="card hidden">
+          <div class="spaced">
+            <h2>گروه‌های لغت</h2>
+            <div class="controls">
+              <button id="btnNewGroup" class="btn">ایجاد گروه جدید</button>
+            </div>
+          </div>
+          <div id="groupsList" class="list" style="margin-top:10px"></div>
+
+          <!-- New/Edit form modal area -->
+          <div id="groupFormArea" class="card hidden" style="margin-top:12px">
+            <h3 id="groupFormTitle">ایجاد گروه</h3>
+            <label>عنوان گروه</label>
+            <input id="groupTitle" placeholder="مثلاً میوه‌ها">
+            <label>توضیحات</label>
+            <textarea id="groupDesc" rows="2"></textarea>
+            <label>برچسب دسته‌بندی</label>
+            <input id="groupTag" placeholder="مثلاً غذا، افعال">
+            <h4>آیتم‌های واژگان</h4>
+            <div id="vocabItemsArea" class="list"></div>
+            <div class="row" style="margin-top:8px">
+              <button id="addVocabItem" class="btn btn-ghost">افزودن واژه</button>
+              <button id="saveGroupBtn" class="btn">ذخیره گروه</button>
+              <button id="cancelGroupBtn" class="btn danger">لغو</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- STUDENT MANAGEMENT -->
+        <div id="students-management" class="card hidden">
+          <div class="spaced">
+            <h2>مدیریت دانش‌آموزان</h2>
+            <div>
+              <button id="btnNewStudent" class="btn">افزودن دانش‌آموز جدید</button>
+            </div>
+          </div>
+          <div id="studentsList" style="margin-top:12px"></div>
+
+          <div id="studentFormArea" class="card hidden" style="margin-top:12px">
+            <h3 id="studentFormTitle">افزودن دانش‌آموز</h3>
+            <label>نام کاربری</label><input id="stuUsername">
+            <label>رمز عبور</label><input id="stuPassword">
+            <label>گروه کلاس (اختیاری)</label><input id="stuClass">
+            <div class="row" style="margin-top:8px">
+              <button id="saveStudentBtn" class="btn">ذخیره</button>
+              <button id="cancelStudentBtn" class="btn danger">لغو</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- QUIZZES MANAGEMENT -->
+        <div id="quizzes-management" class="card hidden">
+          <div class="spaced">
+            <h2>مدیریت آزمون‌ها</h2>
+            <div>
+              <button id="btnNewQuiz" class="btn">ایجاد آزمون جدید</button>
+            </div>
+          </div>
+          <div id="quizzesList" style="margin-top:12px"></div>
+
+          <div id="quizFormArea" class="card hidden" style="margin-top:12px">
+            <h3 id="quizFormTitle">ایجاد آزمون</h3>
+            <label>عنوان آزمون</label><input id="quizTitle">
+            <label>گروه واژگان مرتبط</label>
+            <select id="quizGroupSelect"></select>
+            <label>تنظیمات آزمون</label>
+            <div class="row">
+              <label><input type="checkbox" id="quizShuffleQ"> همگام‌سازی سوالات</label>
+              <label><input type="checkbox" id="quizShuffleOpts"> همگام‌سازی گزینه‌ها</label>
+              <label>زمان (ثانیه) <input id="quizTimeLimit" type="number" min="0" placeholder="اختیاری" style="width:120px"></label>
+              <label>نمره قبولی <input id="quizPassScore" type="number" min="0" max="100" placeholder="مثلاً 60" style="width:100px"></label>
+              <label><input type="checkbox" id="quizRetake"> امکان تکرار</label>
+            </div>
+            <h4>سوالات آزمون</h4>
+            <div id="quizItemsArea" class="list"></div>
+            <div class="row" style="margin-top:8px">
+              <button id="addQuizItem" class="btn btn-ghost">افزودن سوال</button>
+              <button id="saveQuizBtn" class="btn">ذخیره آزمون</button>
+              <button id="cancelQuizBtn" class="btn danger">لغو</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- HOMEWORKS MANAGEMENT -->
+        <div id="homeworks-management" class="card hidden">
+          <div class="spaced">
+            <h2>تکالیف دانش‌آموزان</h2>
+            <div class="tiny muted">نمایش و بررسی ارسال‌ها</div>
+          </div>
+          <div id="homeworksList" style="margin-top:12px"></div>
+
+          <div id="homeworkDetailArea" class="card hidden" style="margin-top:12px">
+            <h3>جزئیات تکلیف</h3>
+            <div><b id="hwTitle"></b> — ارسال شده توسط: <span id="hwStudent"></span></div>
+            <pre id="hwContent" style="white-space:pre-wrap;background:#fafafa;padding:12px;border-radius:8px"></pre>
+            <label>نظر معلم</label>
+            <textarea id="hwComment" rows="3"></textarea>
+            <div class="row" style="margin-top:8px">
+              <button id="hwMarkReviewed" class="btn">بررسی شد</button>
+              <button id="hwMarkNeedFix" class="btn btn-ghost">نیاز به اصلاح</button>
+              <button id="hwDownload" class="btn">دانلود .txt</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- STUDENT PERFORMANCE -->
+        <div id="student-performance" class="card hidden">
+          <h2>نتایج دانش‌آموزان</h2>
+          <div id="performanceArea"></div>
+        </div>
+
+        <!-- STUDENT DASHBOARD -->
+        <div id="student-dashboard" class="card hidden">
+          <div class="spaced">
+            <h2>داشبورد دانش‌آموز</h2>
+            <div class="tiny muted">خوش آمدید</div>
+          </div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap">
+            <div class="card" style="flex:1;min-width:200px">
+              <h3>مطالعه فلش‌کارت</h3>
+              <div class="tiny muted">تمرین واژگان</div>
+              <div style="margin-top:8px"><button id="openFlashcards" class="btn">رفتن به فلش‌کارت‌ها</button></div>
+            </div>
+            <div class="card" style="flex:1;min-width:200px">
+              <h3>آزمون‌ها</h3>
+              <div class="tiny muted">آزمون‌های شما</div>
+              <div style="margin-top:8px"><button id="openStudentQuizzes" class="btn">آزمون‌ها</button></div>
+            </div>
+            <div class="card" style="flex:1;min-width:200px">
+              <h3>ارسال تکلیف</h3>
+              <div class="tiny muted">ارسال به معلم</div>
+              <div style="margin-top:8px"><button id="openSubmitHomework" class="btn">ارسال تکلیف</button></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- FLASHCARDS STUDY -->
+        <div id="flashcards-study" class="card hidden">
+          <div class="spaced">
+            <h2>مطالعه فلش‌کارت‌ها</h2>
+            <div>
+              <select id="flashGroupSelect"></select>
+            </div>
+          </div>
+          <div class="flashcard-area" style="margin-top:12px">
+            <div class="card-large">
+              <div id="flashInner" class="fc-inner">
+                <div class="fc-front" id="fcFront"></div>
+                <div class="fc-back" id="fcBack"></div>
+              </div>
+            </div>
+            <div class="row spaced" style="width:100%;max-width:760px">
+              <div class="controls">
+                <button id="prevCard" class="btn btn-ghost">قبلی</button>
+                <button id="flipCard" class="btn">برگرداندن</button>
+                <button id="nextCard" class="btn btn-ghost">بعدی</button>
+              </div>
+              <div style="flex:1">
+                <label>وضعیت یادگیری</label>
+                <div class="row">
+                  <label><input type="checkbox" id="markLearned"> علامت گذاری به عنوان آموخته شده</label>
+                </div>
+                <div class="progress" style="margin-top:6px"><div id="flashProgress"></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- STUDENT QUIZZES (student-facing) -->
+        <div id="student-quizzes" class="card hidden">
+          <div class="spaced">
+            <h2>آزمون‌ها</h2>
+            <div class="tiny muted">آزمون‌های مرتبط با گروه‌های واژگان</div>
+          </div>
+          <div id="studentQuizzesList" style="margin-top:12px"></div>
+
+          <div id="takeQuizArea" class="card hidden" style="margin-top:12px">
+            <h3 id="takingQuizTitle"></h3>
+            <div id="quizTimer" class="tiny muted"></div>
+            <div id="quizQuestionArea" style="margin-top:12px"></div>
+            <div class="row" style="margin-top:8px">
+              <button id="nextQBtn" class="btn">بعدی</button>
+              <button id="finishQuizBtn" class="btn danger">اتمام آزمون</button>
+            </div>
+          </div>
+
+          <div id="quizResultArea" class="card hidden" style="margin-top:12px">
+            <h3>نتیجه آزمون</h3>
+            <div id="quizResultSummary"></div>
+            <div id="quizWrongList" style="margin-top:8px"></div>
+            <button id="backToQuizzes" class="btn">بازگشت</button>
+          </div>
+        </div>
+
+        <!-- SUBMIT HOMEWORK (student) -->
+        <div id="submit-homework" class="card hidden">
+          <h2>ارسال تکلیف</h2>
+          <label>عنوان تکلیف</label><input id="hwTitleInput">
+          <label>متن تکلیف</label><textarea id="hwContentInput" rows="8"></textarea>
+          <div class="row" style="margin-top:8px">
+            <button id="submitHwBtn" class="btn">ارسال</button>
+            <button id="viewMyHwBtn" class="btn btn-ghost">مشاهده وضعیت</button>
+          </div>
+          <div id="myHwList" style="margin-top:12px"></div>
+        </div>
+
+      </div>
+    </section>
+  </main>
+
+<script>
+/*
+  T.K.K — Single-file App
+  Data stored in localStorage under keys:
+    tk_groups, tk_students, tk_quizzes, tk_homeworks, tk_results
+  Auth in sessionStorage: tk_role = "teacher" | "student", tk_user = username
+*/
+
+// ---------- Utilities ----------
+const qs = s => document.querySelector(s);
+const qsa = s => Array.from(document.querySelectorAll(s));
+const randId = (prefix='id') => prefix + '_' + Math.random().toString(36).slice(2,9);
+
+function saveLS(key, val){ localStorage.setItem(key, JSON.stringify(val)); }
+function readLS(key, fallback=[]){
+  try{ const v = JSON.parse(localStorage.getItem(key)); return v===null?fallback:v; }catch(e){ return fallback; }
+}
+function now(){ return new Date().toISOString(); }
+
+function ensureDefaults(){
+  if(!localStorage.getItem('tk_groups')) saveLS('tk_groups', []);
+  if(!localStorage.getItem('tk_students')) saveLS('tk_students', []);
+  if(!localStorage.getItem('tk_quizzes')) saveLS('tk_quizzes', []);
+  if(!localStorage.getItem('tk_homeworks')) saveLS('tk_homeworks', []);
+  if(!localStorage.getItem('tk_results')) saveLS('tk_results', []);
+}
+ensureDefaults();
+
+// ---------- Auth & routing ----------
+function setRoleBadge(){
+  const role = sessionStorage.getItem('tk_role');
+  const user = sessionStorage.getItem('tk_user');
+  const badge = qs('#currentRole');
+  const logoutBtn = qs('#logoutBtn');
+  if(role === 'teacher'){
+    badge.textContent = 'معلم: ' + user;
+    logoutBtn.classList.remove('hidden');
+    qs('#teacherMenu').classList.remove('hidden');
+    qs('#studentMenu').classList.add('hidden');
+    qs('#loginForms').classList.add('hidden');
+  } else if(role === 'student'){
+    badge.textContent = 'دانش‌آموز: ' + user;
+    logoutBtn.classList.remove('hidden');
+    qs('#studentMenu').classList.remove('hidden');
+    qs('#teacherMenu').classList.add('hidden');
+    qs('#loginForms').classList.add('hidden');
+  } else {
+    badge.textContent = 'وارد نشده';
+    logoutBtn.classList.add('hidden');
+    qs('#teacherMenu').classList.add('hidden');
+    qs('#studentMenu').classList.add('hidden');
+    qs('#loginForms').classList.remove('hidden');
+  }
+  updateCounts();
+  showPage(role === 'teacher' ? 'teacher-dashboard' : (role === 'student' ? 'student-dashboard' : null));
+}
+qs('#logoutBtn').addEventListener('click', ()=>{
+  sessionStorage.removeItem('tk_role'); sessionStorage.removeItem('tk_user');
+  setRoleBadge();
+});
+
+// teacher login
+qs('#teacherLoginBtn').addEventListener('click', ()=>{
+  const u = qs('#teacherUser').value.trim();
+  const p = qs('#teacherPass').value;
+  if(u === 'Turkadmin' && p === 'Turkadmin123'){
+    sessionStorage.setItem('tk_role','teacher'); sessionStorage.setItem('tk_user',u);
+    alert('ورود معلم موفق. خوش آمدید!');
+    setRoleBadge();
+    renderAll();
+  } else alert('نام کاربری یا رمز عبور اشتباه است.');
+});
+// student login
+qs('#studentLoginBtn').addEventListener('click', ()=>{
+  const u = qs('#studentUser').value.trim();
+  const p = qs('#studentPass').value;
+  const students = readLS('tk_students');
+  const found = students.find(s => s.username === u && s.password === p);
+  if(found){
+    sessionStorage.setItem('tk_role','student'); sessionStorage.setItem('tk_user',u);
+    alert('ورود دانش‌آموز موفق. خوش آمدید!');
+    setRoleBadge();
+    renderAll();
+  } else alert('نام کاربری یا رمز عبور اشتباه یا حسابی وجود ندارد.');
+});
+
+// quick link teacher -> student view (impersonate)
+qs('#toStudentView').addEventListener('click', ()=>{
+  // impersonate first student if exists, else ask to create
+  const studs = readLS('tk_students');
+  if(!studs.length){ alert('ابتدا یک حساب دانش‌آموز ایجاد کنید.'); return; }
+  const first = studs[0].username;
+  sessionStorage.setItem('tk_role','student'); sessionStorage.setItem('tk_user', first);
+  alert('نمای دانش‌آموز باز شد: ' + first);
+  setRoleBadge();
+});
+
+// show specific page (id) or none
+function showPage(pageId){
+  qsa('#pages > div').forEach(div => div.classList.add('hidden'));
+  if(!pageId) return;
+  const el = qs('#'+pageId);
+  if(el) el.classList.remove('hidden');
+}
+
+// navigation clicks
+qsa('.menu-item').forEach(it=>{
+  it.addEventListener('click', e=>{
+    const page = it.dataset.page;
+    if(page) {
+      showPage(page);
+      if(page==='vocab-groups') renderGroupsList();
+      if(page==='students-management') renderStudents();
+      if(page==='quizzes-management') renderQuizzesList();
+      if(page==='homeworks-management') renderHomeworks();
+      if(page==='student-performance') renderPerformance();
+      if(page==='student-dashboard') renderStudentDashboard();
+      if(page==='flashcards-study') prepareFlashcards();
+      if(page==='student-quizzes') renderStudentQuizzesList();
+      if(page==='submit-homework') renderSubmitHomework();
+    }
+  });
+});
+
+// top buttons
+qs('#openVocabGroups').addEventListener('click', ()=>{ showPage('vocab-groups'); renderGroupsList();});
+qs('#openStudents').addEventListener('click', ()=>{ showPage('students-management'); renderStudents();});
+qs('#openQuizzes').addEventListener('click', ()=>{ showPage('quizzes-management'); renderQuizzesList();});
+qs('#openFlashcards').addEventListener('click', ()=>{ showPage('flashcards-study'); prepareFlashcards();});
+qs('#openStudentQuizzes').addEventListener('click', ()=>{ showPage('student-quizzes'); renderStudentQuizzesList();});
+qs('#openSubmitHomework').addEventListener('click', ()=>{ showPage('submit-homework'); renderSubmitHomework();});
+qs('#openStudentQuizzes').addEventListener('click', ()=>{ showPage('student-quizzes'); renderStudentQuizzesList();});
+
+// ---------- Counts ----------
+function updateCounts(){
+  qs('#countGroups').textContent = readLS('tk_groups').length;
+  qs('#countStudents').textContent = readLS('tk_students').length;
+}
+
+// ---------- VOCAB GROUPS: CRUD ----------
+qs('#btnNewGroup').addEventListener('click', ()=>{
+  openGroupForm();
+});
+
+function renderGroupsList(){
+  const area = qs('#groupsList'); area.innerHTML='';
+  const groups = readLS('tk_groups');
+  if(!groups.length){ area.innerHTML = '<div class="muted tiny">هیچ گروهی ساخته نشده است.</div>'; return; }
+  groups.forEach(g=>{
+    const div = document.createElement('div'); div.className='list-item';
+    const left = document.createElement('div');
+    left.innerHTML = `<div style="font-weight:700">${g.title}</div><div class="tiny muted">${g.description || ''} — برچسب: ${g.tag || '-'}</div><div class="tiny">تعداد واژه: ${g.items.length}</div>`;
+    const right = document.createElement('div');
+    right.style.display='flex'; right.style.gap='8px';
+    const edit = document.createElement('button'); edit.className='btn btn-ghost'; edit.textContent='ویرایش'; edit.addEventListener('click', ()=>openGroupForm(g.groupId));
+    const del = document.createElement('button'); del.className='btn danger'; del.textContent='حذف'; del.addEventListener('click', ()=>{ if(confirm('آیا مطمئنید حذف شود؟')) deleteGroup(g.groupId); });
+    const openFlash = document.createElement('button'); openFlash.className='btn'; openFlash.textContent='مشاهده فلش‌کارت‌ها'; openFlash.addEventListener('click', ()=>{ showPage('flashcards-study'); prepareFlashcards(g.groupId); });
+    right.appendChild(openFlash); right.appendChild(edit); right.appendChild(del);
+    div.appendChild(left); div.appendChild(right);
+    area.appendChild(div);
+  });
+}
+
+function openGroupForm(groupId=null){
+  qs('#groupFormArea').classList.remove('hidden');
+  qs('#vocab-groups').scrollIntoView({behavior:'smooth'});
+  qs('#vocabItemsArea').innerHTML='';
+  if(!groupId){
+    qs('#groupFormTitle').textContent = 'ایجاد گروه';
+    qs('#groupTitle').value=''; qs('#groupDesc').value=''; qs('#groupTag').value='';
+    qs('#groupFormArea').dataset.edit = '';
+    addVocabItemRow(); // one empty item
+  } else {
+    qs('#groupFormTitle').textContent = 'ویرایش گروه';
+    const groups = readLS('tk_groups'); const g = groups.find(x=>x.groupId===groupId);
+    if(!g) return alert('گروه یافت نشد');
+    qs('#groupTitle').value = g.title; qs('#groupDesc').value = g.description || ''; qs('#groupTag').value = g.tag || '';
+    qs('#groupFormArea').dataset.edit = groupId;
+    g.items.forEach(it => addVocabItemRow(it));
+  }
+}
+
+qs('#cancelGroupBtn').addEventListener('click', ()=>{ qs('#groupFormArea').classList.add('hidden'); });
+
+function addVocabItemRow(item = {word:'', meaning:'', example:''}){
+  const area = qs('#vocabItemsArea');
+  const id = randId('item');
+  const div = document.createElement('div'); div.className='card'; div.dataset.id = id;
+  div.innerHTML = `
+    <label>کلمه (ترکی)</label><input data-field="word" value="${item.word || ''}">
+    <label>معنی (فارسی)</label><input data-field="meaning" value="${item.meaning || ''}">
+    <label>مثال</label><input data-field="example" value="${item.example || ''}">
+    <div class="row" style="margin-top:6px">
+      <button class="btn btn-ghost" data-action="up">بالا</button>
+      <button class="btn btn-ghost" data-action="down">پایین</button>
+      <button class="btn danger" data-action="remove">حذف</button>
+    </div>`;
+  area.appendChild(div);
+
+  div.querySelector('[data-action="remove"]').addEventListener('click', ()=>{ div.remove(); });
+  div.querySelector('[data-action="up"]').addEventListener('click', ()=>{ const prev = div.previousElementSibling; if(prev) area.insertBefore(div, prev); });
+  div.querySelector('[data-action="down"]').addEventListener('click', ()=>{ const next = div.nextElementSibling; if(next) area.insertBefore(next, div); });
+}
+qs('#addVocabItem').addEventListener('click', ()=> addVocabItemRow());
+
+qs('#saveGroupBtn').addEventListener('click', ()=>{
+  const title = qs('#groupTitle').value.trim();
+  if(!title) return alert('عنوان گروه الزامی است.');
+  const desc = qs('#groupDesc').value.trim();
+  const tag = qs('#groupTag').value.trim();
+  const items = [];
+  qsa('#vocabItemsArea > .card').forEach(div=>{
+    const w = div.querySelector('[data-field="word"]').value.trim();
+    const m = div.querySelector('[data-field="meaning"]').value.trim();
+    const ex = div.querySelector('[data-field="example"]').value.trim();
+    if(w) items.push({word:w, meaning:m, example:ex});
+  });
+  const groups = readLS('tk_groups');
+  const editId = qs('#groupFormArea').dataset.edit;
+  if(editId){
+    const idx = groups.findIndex(g=>g.groupId===editId);
+    if(idx>=0){
+      groups[idx].title = title; groups[idx].description = desc; groups[idx].tag = tag; groups[idx].items = items;
+    }
+  } else {
+    groups.push({groupId: randId('G'), title, description: desc, tag, items});
+  }
+  saveLS('tk_groups', groups);
+  qs('#groupFormArea').classList.add('hidden');
+  renderGroupsList();
+  updateCounts();
+});
+
+// delete group
+function deleteGroup(id){
+  const groups = readLS('tk_groups').filter(g=>g.groupId !== id);
+  saveLS('tk_groups', groups);
+  renderGroupsList(); updateCounts();
+}
+
+// ---------- STUDENT MANAGEMENT ----------
+qs('#btnNewStudent').addEventListener('click', ()=>{
+  qs('#studentFormArea').classList.remove('hidden'); qs('#studentFormTitle').textContent='افزودن دانش‌آموز';
+  qs('#stuUsername').value=''; qs('#stuPassword').value=''; qs('#stuClass').value='';
+  qs('#studentFormArea').dataset.edit='';
+});
+qs('#cancelStudentBtn').addEventListener('click', ()=> qs('#studentFormArea').classList.add('hidden'));
+qs('#saveStudentBtn').addEventListener('click', ()=>{
+  const u = qs('#stuUsername').value.trim(); const p = qs('#stuPassword').value; const cls = qs('#stuClass').value.trim();
+  if(!u || !p) return alert('نام کاربری و رمز الزامی است.');
+  const students = readLS('tk_students');
+  const edit = qs('#studentFormArea').dataset.edit;
+  if(edit){
+    const idx = students.findIndex(s=>s.id===edit);
+    if(idx>=0){ students[idx].username=u; students[idx].password=p; students[idx].class=cls; }
+  } else {
+    if(students.find(s=>s.username===u)) return alert('نام کاربری تکراری است.');
+    students.push({id: randId('ST'), username:u, password:p, class:cls, quizzes:[], homework:[]});
+  }
+  saveLS('tk_students', students); qs('#studentFormArea').classList.add('hidden'); renderStudents(); updateCounts();
+});
+
+function renderStudents(){
+  const area = qs('#studentsList'); area.innerHTML='';
+  const students = readLS('tk_students');
+  if(!students.length){ area.innerHTML='<div class="muted tiny">هیچ دانش‌آموزی وجود ندارد.</div>'; return; }
+  students.forEach(s=>{
+    const row = document.createElement('div'); row.className='list-item';
+    row.innerHTML = `<div><div style="font-weight:700">${s.username}</div><div class="tiny muted">کلاس: ${s.class || '-'}</div></div>`;
+    const right = document.createElement('div'); right.style.display='flex'; right.style.gap='8px';
+    const edit = document.createElement('button'); edit.className='btn btn-ghost'; edit.textContent='ویرایش'; edit.addEventListener('click', ()=>{
+      qs('#studentFormArea').classList.remove('hidden'); qs('#studentFormArea').dataset.edit = s.id;
+      qs('#stuUsername').value = s.username; qs('#stuPassword').value = s.password; qs('#stuClass').value = s.class || '';
+      qs('#studentFormTitle').textContent='ویرایش دانش‌آموز';
+    });
+    const del = document.createElement('button'); del.className='btn danger'; del.textContent='حذف'; del.addEventListener('click', ()=>{ if(confirm('حذف شود؟')){ deleteStudent(s.id); } });
+    right.appendChild(edit); right.appendChild(del);
+    row.appendChild(right);
+    area.appendChild(row);
+  });
+}
+
+function deleteStudent(id){
+  let studs = readLS('tk_students'); studs = studs.filter(s=>s.id !== id); saveLS('tk_students', studs);
+  // also remove homeworks/results related to this student (optional)
+  saveLS('tk_homeworks', readLS('tk_homeworks').filter(h=>h.studentId !== id));
+  saveLS('tk_results', readLS('tk_results').filter(r=>r.studentId !== id));
+  renderStudents(); updateCounts();
+}
+
+// ---------- QUIZZES MANAGEMENT ----------
+qs('#btnNewQuiz').addEventListener('click', ()=> openQuizForm());
+function renderQuizzesList(){
+  const area = qs('#quizzesList'); area.innerHTML='';
+  const quizzes = readLS('tk_quizzes');
+  if(!quizzes.length){ area.innerHTML = '<div class="muted tiny">آزمونی وجود ندارد.</div>'; return; }
+  quizzes.forEach(q=>{
+    const div = document.createElement('div'); div.className='list-item';
+    div.innerHTML = `<div><div style="font-weight:700">${q.title}</div><div class="tiny muted">گروه: ${q.groupTitle || '-'}</div><div class="tiny">سوال‌ها: ${q.items.length}</div></div>`;
+    const right = document.createElement('div'); right.style.display='flex'; right.style.gap='6px';
+    const edit = document.createElement('button'); edit.className='btn btn-ghost'; edit.textContent='ویرایش'; edit.addEventListener('click', ()=> openQuizForm(q.quizId));
+    const del = document.createElement('button'); del.className='btn danger'; del.textContent='حذف'; del.addEventListener('click', ()=>{ if(confirm('حذف شود؟')) deleteQuiz(q.quizId); });
+    right.appendChild(edit); right.appendChild(del);
+    div.appendChild(right); area.appendChild(div);
+  });
+}
+
+function openQuizForm(quizId=null){
+  qs('#quizFormArea').classList.remove('hidden');
+  qs('#quizItemsArea').innerHTML='';
+  const groups = readLS('tk_groups');
+  const sel = qs('#quizGroupSelect'); sel.innerHTML='';
+  sel.appendChild(new Option('--- انتخاب گروه ---',''));
+  groups.forEach(g => sel.appendChild(new Option(g.title, g.groupId)));
+  if(!quizId){
+    qs('#quizFormTitle').textContent='ایجاد آزمون'; qs('#quizTitle').value=''; qs('#quizGroupSelect').value='';
+    qs('#quizShuffleQ').checked = false; qs('#quizShuffleOpts').checked=false; qs('#quizTimeLimit').value=''; qs('#quizPassScore').value=''; qs('#quizRetake').checked=false;
+    addQuizItemRow();
+  } else {
+    const quizzes = readLS('tk_quizzes'); const q = quizzes.find(x=>x.quizId===quizId);
+    if(!q) return alert('آزمون یافت نشد');
+    qs('#quizFormTitle').textContent='ویرایش آزمون'; qs('#quizTitle').value=q.title; qs('#quizGroupSelect').value=q.groupId || '';
+    qs('#quizShuffleQ').checked = !!q.shuffleQ; qs('#quizShuffleOpts').checked=!!q.shuffleOpts; qs('#quizTimeLimit').value = q.timeLimit || ''; qs('#quizPassScore').value=q.passScore||''; qs('#quizRetake').checked=!!q.retake;
+    qs('#quizFormArea').dataset.edit = quizId;
+    q.items.forEach(it => addQuizItemRow(it));
+  }
+}
+qs('#cancelQuizBtn').addEventListener('click', ()=> qs('#quizFormArea').classList.add('hidden'));
+qs('#addQuizItem').addEventListener('click', ()=> addQuizItemRow());
+
+function addQuizItemRow(item = {question:'', opts:['','',''], correct:0, explanation:''}){
+  const area = qs('#quizItemsArea');
+  const div = document.createElement('div'); div.className='card';
+  div.innerHTML = `
+    <label>سوال</label><input data-field="q" value="${escapeHtml(item.question)}">
+    <label>گزینه‌ها</label>
+    <input data-field="o0" value="${escapeHtml(item.opts ? item.opts[0] : '')}">
+    <input data-field="o1" value="${escapeHtml(item.opts ? item.opts[1] : '')}">
+    <input data-field="o2" value="${escapeHtml(item.opts ? item.opts[2] : '')}">
+    <label>شماره گزینه صحیح (0/1/2)</label><input data-field="correct" value="${item.correct || 0}">
+    <label>توضیح (اختیاری)</label><input data-field="explain" value="${escapeHtml(item.explanation || '')}">
+    <div class="row" style="margin-top:6px">
+      <button class="btn btn-ghost" data-action="up">بالا</button>
+      <button class="btn btn-ghost" data-action="down">پایین</button>
+      <button class="btn danger" data-action="remove">حذف</button>
+    </div>
+  `;
+  area.appendChild(div);
+  div.querySelector('[data-action="remove"]').addEventListener('click', ()=> div.remove());
+  div.querySelector('[data-action="up"]').addEventListener('click', ()=>{ const prev = div.previousElementSibling; if(prev) area.insertBefore(div, prev); });
+  div.querySelector('[data-action="down"]').addEventListener('click', ()=>{ const next = div.nextElementSibling; if(next) area.insertBefore(next, div); });
+}
+function escapeHtml(s){ return (s||'').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+qs('#saveQuizBtn').addEventListener('click', ()=>{
+  const title = qs('#quizTitle').value.trim(); const groupId = qs('#quizGroupSelect').value;
+  if(!title) return alert('عنوان آزمون لازم است.');
+  const items = [];
+  qsa('#quizItemsArea .card').forEach(div=>{
+    const q = div.querySelector('[data-field="q"]').value.trim();
+    const o0 = div.querySelector('[data-field="o0"]').value.trim();
+    const o1 = div.querySelector('[data-field="o1"]').value.trim();
+    const o2 = div.querySelector('[data-field="o2"]').value.trim();
+    const corr = parseInt(div.querySelector('[data-field="correct"]').value) || 0;
+    const exp = div.querySelector('[data-field="explain"]').value.trim();
+    if(!q) return;
+    items.push({question:q, opts:[o0,o1,o2], correct:corr, explanation:exp});
+  });
+  const quizzes = readLS('tk_quizzes');
+  const edit = qs('#quizFormArea').dataset.edit;
+  const groupTitle = (readLS('tk_groups').find(g=>g.groupId===groupId)||{}).title || '';
+  const payload = {title, groupId, groupTitle, items, shuffleQ:!!qs('#quizShuffleQ').checked, shuffleOpts:!!qs('#quizShuffleOpts').checked, timeLimit:qs('#quizTimeLimit').value ? parseInt(qs('#quizTimeLimit').value) : null, passScore: qs('#quizPassScore').value ? parseInt(qs('#quizPassScore').value) : null, retake: !!qs('#quizRetake').checked};
+  if(edit){
+    const idx = quizzes.findIndex(q=>q.quizId===edit);
+    if(idx>=0){ quizzes[idx] = {...quizzes[idx], ...payload}; }
+  } else { quizzes.push({...payload, quizId: randId('Q')}); }
+  saveLS('tk_quizzes', quizzes);
+  qs('#quizFormArea').classList.add('hidden'); renderQuizzesList();
+});
+
+function deleteQuiz(id){
+  const quizzes = readLS('tk_quizzes').filter(q=>q.quizId !== id); saveLS('tk_quizzes', quizzes); renderQuizzesList();
+}
+
+// ---------- HOMEWORKS: teacher view ----------
+function renderHomeworks(){
+  const area = qs('#homeworksList'); area.innerHTML='';
+  const hws = readLS('tk_homeworks');
+  if(!hws.length) { area.innerHTML = '<div class="muted tiny">تکلیفی ارسال نشده است.</div>'; return; }
+  hws.forEach(h=>{
+    const stud = (readLS('tk_students').find(s=>s.id===h.studentId) || {}).username || 'ناشناخته';
+    const div = document.createElement('div'); div.className='list-item'; div.innerHTML = `<div><div style="font-weight:700">${h.title}</div><div class="tiny muted">${stud} — ${new Date(h.created||'').toLocaleString()}</div></div>`;
+    const right = document.createElement('div'); right.style.display='flex'; right.style.gap='8px';
+    const open = document.createElement('button'); open.className='btn btn-ghost'; open.textContent='باز کردن'; open.addEventListener('click', ()=> openHomeworkDetail(h));
+    right.appendChild(open);
+    div.appendChild(right);
+    area.appendChild(div);
+  });
+}
+
+function openHomeworkDetail(hw){
+  qs('#homeworkDetailArea').classList.remove('hidden');
+  qs('#hwTitle').textContent = hw.title;
+  qs('#hwStudent').textContent = (readLS('tk_students').find(s=>s.id===hw.studentId)||{}).username || 'ناشناخته';
+  qs('#hwContent').textContent = hw.content;
+  qs('#hwComment').value = hw.teacherComment || '';
+  qs('#hwMarkReviewed').onclick = ()=>{ hw.status='reviewed'; hw.teacherComment = qs('#hwComment').value; updateHomework(hw); alert('وضعیت: بررسی شد'); renderHomeworks(); qs('#homeworkDetailArea').classList.add('hidden'); };
+  qs('#hwMarkNeedFix').onclick = ()=>{ hw.status='need_fix'; hw.teacherComment = qs('#hwComment').value; updateHomework(hw); alert('وضعیت: نیاز به اصلاح'); renderHomeworks(); qs('#homeworkDetailArea').classList.add('hidden'); };
+  qs('#hwDownload').onclick = ()=>{ downloadTxt(hw.title + '.txt', hw.content); };
+}
+
+function updateHomework(hw){
+  const arr = readLS('tk_homeworks'); const idx = arr.findIndex(x=>x.id===hw.id);
+  if(idx>=0) arr[idx]=hw; saveLS('tk_homeworks', arr);
+}
+
+function downloadTxt(filename, content){
+  const blob = new Blob([content], {type:'text/plain;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download=filename; a.click(); URL.revokeObjectURL(url);
+}
+
+// ---------- STUDENT PERFORMANCE ----------
+function renderPerformance(){
+  const area = qs('#performanceArea'); area.innerHTML='';
+  // Show summary per student: quizzes & scores
+  const studs = readLS('tk_students'); const results = readLS('tk_results');
+  if(!studs.length){ area.innerHTML = '<div class="muted tiny">بدون دانش‌آموز</div>'; return; }
+  studs.forEach(s=>{
+    const sec = document.createElement('div'); sec.className='card'; sec.style.marginBottom='8px';
+    const studResults = results.filter(r=>r.studentId === s.id);
+    let html = `<div style="display:flex;justify-content:space-between;align-items:center"><div><b>${s.username}</b><div class="tiny muted">کلاس: ${s.class||'-'}</div></div><div class="tiny">آزمون‌ها: ${studResults.length}</div></div>`;
+    if(studResults.length){
+      html += '<table><thead><tr><th>آزمون</th><th>نمره</th><th>تاریخ</th></tr></thead><tbody>';
+      studResults.forEach(r=> html += `<tr><td>${r.quizTitle}</td><td>${r.score}%</td><td>${new Date(r.takenAt).toLocaleString()}</td></tr>`);
+      html += '</tbody></table>';
+    } else html += '<div class="muted tiny">آزمونی ثبت نشده</div>';
+    sec.innerHTML = html;
+    area.appendChild(sec);
+  });
+}
+
+// ---------- STUDENT DASHBOARD & FLASHCARDS ----------
+function renderStudentDashboard(){
+  // update counts or user-specific info if needed
+}
+
+let flashState = {groupId:null, items:[], idx:0, learned: new Set()};
+function prepareFlashcards(preselectGroupId=null){
+  const groups = readLS('tk_groups');
+  const sel = qs('#flashGroupSelect'); sel.innerHTML='';
+  sel.appendChild(new Option('--- انتخاب گروه ---',''));
+  groups.forEach(g => sel.appendChild(new Option(g.title, g.groupId)));
+  if(preselectGroupId) sel.value = preselectGroupId;
+  sel.onchange = ()=> loadFlashGroup(sel.value);
+  // if there is selection, auto-load first
+  if(preselectGroupId) loadFlashGroup(preselectGroupId);
+  else if(groups.length) { sel.value = groups[0].groupId; loadFlashGroup(groups[0].groupId); }
+}
+
+function loadFlashGroup(groupId){
+  flashState.groupId = groupId;
+  const g = readLS('tk_groups').find(x=>x.groupId===groupId);
+  flashState.items = g ? g.items.map((it, i)=>({...it, id: i})) : [];
+  flashState.idx = 0; flashState.learned = new Set();
+  renderFlashCard();
+}
+
+function renderFlashCard(){
+  const inner = qs('#flashInner'); const front = qs('#fcFront'); const back = qs('#fcBack');
+  if(!flashState.items.length){ front.textContent='گروهی انتخاب نشده یا واژه‌ای وجود ندارد.'; back.textContent=''; return; }
+  const cur = flashState.items[flashState.idx];
+  front.textContent = cur.word || '';
+  back.innerHTML = `<div style="text-align:center"><div style="font-size:18px">${cur.meaning || ''}</div><div class="tiny muted" style="margin-top:8px">${cur.example || ''}</div></div>`;
+  qs('#flashInner').classList.remove('flipped'); qs('#markLearned').checked = flashState.learned.has(cur.id);
+  updateFlashProgress();
+}
+
+qs('#flipCard').addEventListener('click', ()=> qs('#flashInner').classList.toggle('flipped'));
+qs('#prevCard').addEventListener('click', ()=>{
+  if(!flashState.items.length) return;
+  flashState.idx = (flashState.idx - 1 + flashState.items.length) % flashState.items.length; renderFlashCard();
+});
+qs('#nextCard').addEventListener('click', ()=>{
+  if(!flashState.items.length) return;
+  flashState.idx = (flashState.idx + 1) % flashState.items.length; renderFlashCard();
+});
+qs('#markLearned').addEventListener('change', (e)=>{
+  const cur = flashState.items[flashState.idx]; if(!cur) return;
+  if(e.target.checked) flashState.learned.add(cur.id); else flashState.learned.delete(cur.id);
+  updateFlashProgress();
+});
+function updateFlashProgress(){
+  const total = flashState.items.length || 1; const learned = flashState.learned.size; const perc = Math.round(learned/total*100);
+  qs('#flashProgress').style.width = perc + '%';
+}
+
+// ---------- STUDENT QUIZZES (student-side) ----------
+function renderStudentQuizzesList(){
+  const area = qs('#studentQuizzesList'); area.innerHTML='';
+  const quizzes = readLS('tk_quizzes');
+  if(!quizzes.length) { area.innerHTML='<div class="muted tiny">آزمونی موجود نیست.</div>'; return; }
+  quizzes.forEach(q=>{
+    const div = document.createElement('div'); div.className='list-item';
+    div.innerHTML = `<div><div style="font-weight:700">${q.title}</div><div class="tiny muted">${q.groupTitle || ''}</div></div>`;
+    const btns = document.createElement('div'); btns.style.display='flex'; btns.style.gap='8px';
+    const start = document.createElement('button'); start.className='btn'; start.textContent='شروع آزمون'; start.addEventListener('click', ()=> startQuizForStudent(q.quizId));
+    btns.appendChild(start); div.appendChild(btns); area.appendChild(div);
+  });
+}
+
+let activeQuiz = null; let quizState = null; let quizTimerInterval = null;
+
+function startQuizForStudent(quizId){
+  const q = readLS('tk_quizzes').find(x=>x.quizId===quizId);
+  if(!q) return alert('آزمون یافت نشد');
+  // prepare questions
+  let items = q.items.map(it=> ({...it}));
+  if(q.shuffleQ) items = shuffleArray(items);
+  if(q.shuffleOpts) items = items.map(it => ({...it, opts: shuffleArray([...it.opts])}));
+  activeQuiz = q;
+  quizState = {idx:0, items, answers: []};
+  qs('#takingQuizTitle').textContent = q.title;
+  if(q.timeLimit){ startQuizTimer(q.timeLimit); } else qs('#quizTimer').textContent='';
+  showPage('student-quizzes'); qs('#takeQuizArea').classList.remove('hidden'); qs('#quizResultArea').classList.add('hidden');
+  renderQuizQuestion();
+}
+
+function renderQuizQuestion(){
+  const area = qs('#quizQuestionArea'); area.innerHTML='';
+  if(!quizState) return;
+  const cur = quizState.items[quizState.idx];
+  if(!cur) return;
+  const html = `<div style="font-weight:700">${quizState.idx+1}. ${cur.question}</div>`;
+  const optsDiv = document.createElement('div'); optsDiv.style.marginTop='8px';
+  cur.opts.forEach((o,i)=>{
+    const btn = document.createElement('button'); btn.className='btn btn-ghost'; btn.style.display='block'; btn.style.width='100%'; btn.style.marginBottom='6px';
+    btn.textContent = o; btn.addEventListener('click', ()=> { quizState.answers[quizState.idx] = {selected:i, text:o}; if(activeQuiz.shuffleOpts){ /* if opts were shuffled, we cannot map to original index reliably; we'll evaluate by text */ } goNextQuestion(); });
+    optsDiv.appendChild(btn);
+  });
+  area.innerHTML = html; area.appendChild(optsDiv);
+}
+
+function goNextQuestion(){
+  if(quizState.idx < quizState.items.length - 1){ quizState.idx++; renderQuizQuestion(); } else finishQuiz();
+}
+
+qs('#nextQBtn').addEventListener('click', ()=> { if(quizState.idx < quizState.items.length -1){ quizState.idx++; renderQuizQuestion(); } else alert('این سوال آخر است. از دکمه اتمام برای پایان استفاده کنید.'); });
+qs('#finishQuizBtn').addEventListener('click', ()=> { if(confirm('آیا مطمئنید آزمون تمام شود؟')) finishQuiz(); });
+
+function finishQuiz(){
+  // evaluate
+  stopQuizTimer();
+  const results = []; let correctCount = 0;
+  quizState.items.forEach((it, i)=>{
+    const ans = quizState.answers[i];
+    let selectedText = ans ? ans.text : null;
+    let isCorrect = false;
+    if(selectedText !== null){
+      // compare to original correct text
+      const originalCorrectText = it.opts[it.correct] ? it.opts[it.correct] : null;
+      if(originalCorrectText && selectedText === originalCorrectText) isCorrect = true;
+    }
+    if(isCorrect) correctCount++;
+    results.push({question: it.question, selected: selectedText, correct: it.opts[it.correct], isCorrect, explanation: it.explanation || ''});
+  });
+  const score = Math.round((correctCount / quizState.items.length) * 100);
+  // save result for student
+  const studentUsername = sessionStorage.getItem('tk_user');
+  const student = readLS('tk_students').find(s=>s.username === studentUsername);
+  if(student){
+    const resArr = readLS('tk_results');
+    resArr.push({id: randId('R'), studentId: student.id, studentUsername, quizId: activeQuiz.quizId, quizTitle: activeQuiz.title, score, takenAt: now(), details: results});
+    saveLS('tk_results', resArr);
+  }
+  // show result
+  qs('#quizResultSummary').innerHTML = `<div>نمره: <b>${score}%</b> — پاسخ‌های صحیح: ${correctCount} از ${quizState.items.length}</div>`;
+  const wrongList = qs('#quizWrongList'); wrongList.innerHTML='';
+  results.filter(r=>!r.isCorrect).forEach(r=>{
+    const d = document.createElement('div'); d.className='card'; d.style.marginTop='6px';
+    d.innerHTML = `<div style="font-weight:700">${r.question}</div><div class="tiny muted">پاسخ شما: ${r.selected || '-'} — پاسخ صحیح: ${r.correct}</div><div class="tiny">${r.explanation}</div>`;
+    wrongList.appendChild(d);
+  });
+  qs('#takeQuizArea').classList.add('hidden');
+  qs('#quizResultArea').classList.remove('hidden');
+}
+
+qs('#backToQuizzes').addEventListener('click', ()=> { qs('#quizResultArea').classList.add('hidden'); renderStudentQuizzesList(); });
+
+function shuffleArray(arr){ for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]];} return arr; }
+
+// Timer
+function startQuizTimer(seconds){
+  let remain = seconds; qs('#quizTimer').textContent = 'زمان باقی‌مانده: ' + remain + ' ثانیه';
+  quizTimerInterval = setInterval(()=>{ remain--; if(remain<=0){ stopQuizTimer(); alert('زمان تمام شد — آزمون پایان یافت'); finishQuiz(); } else qs('#quizTimer').textContent = 'زمان باقی‌مانده: ' + remain + ' ثانیه'; }, 1000);
+}
+function stopQuizTimer(){ if(quizTimerInterval) clearInterval(quizTimerInterval); quizTimerInterval = null; qs('#quizTimer').textContent=''; }
+
+// ---------- SUBMIT HOMEWORK (student) ----------
+function renderSubmitHomework(){
+  qs('#myHwList').innerHTML='';
+  const me = sessionStorage.getItem('tk_user');
+  const stud = (readLS('tk_students').find(s=>s.username===me)||{});
+  const hws = readLS('tk_homeworks').filter(h=>h.studentId === stud.id);
+  if(!hws.length) qs('#myHwList').innerHTML = '<div class="tiny muted">هیچ تکلیفی ارسال نکرده‌اید.</div>';
+  hws.forEach(hw=>{
+    const div = document.createElement('div'); div.className='list-item'; div.innerHTML = `<div><div style="font-weight:700">${hw.title}</div><div class="tiny muted">وضعیت: ${hw.status || 'pending'}</div></div>`;
+    const right = document.createElement('div'); right.style.display='flex'; right.style.gap='8px';
+    const open = document.createElement('button'); open.className='btn btn-ghost'; open.textContent='مشاهده'; open.addEventListener('click', ()=> alert('نظر معلم: ' + (hw.teacherComment || '---') + '\\n\\nمتن:\\n' + hw.content));
+    right.appendChild(open); div.appendChild(right); qs('#myHwList').appendChild(div);
+  });
+}
+
+qs('#submitHwBtn').addEventListener('click', ()=>{
+  const title = qs('#hwTitleInput').value.trim();
+  const content = qs('#hwContentInput').value.trim();
+  if(!title || !content) return alert('عنوان و متن لازم است.');
+  const me = sessionStorage.getItem('tk_user');
+  const stud = (readLS('tk_students').find(s=>s.username===me)||{});
+  if(!stud.id) return alert('خطا: حساب دانش‌آموز یافت نشد.');
+  const arr = readLS('tk_homeworks');
+  arr.push({id: randId('HW'), studentId: stud.id, title, content, status:'pending', teacherComment:'', created:now()});
+  saveLS('tk_homeworks', arr);
+  qs('#hwTitleInput').value=''; qs('#hwContentInput').value='';
+  alert('تکلیف ارسال شد.');
+  renderSubmitHomework();
+});
+
+// ---------- INIT render ----------
+function renderAll(){
+  setRoleBadge();
+  renderGroupsList();
+  renderStudents();
+  renderQuizzesList();
+  renderHomeworks();
+  renderPerformance();
+  renderStudentQuizzesList();
+  updateCounts();
+}
+renderAll();
+
+// initial UI state
+setRoleBadge();
+
+/* End of App */
+</script>
+</body>
+</html>
